@@ -140,7 +140,8 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     assertThat(buildStep.getDeployInfo()).isNotNull();
     assertThat(buildStep.getDeployInfo().getApksToDeploy()).containsExactly(apkFile);
     assertThat(externalTaskInterceptor.command).contains(buildTarget.toString());
-    assertThat(externalTaskInterceptor.command).contains("--output_groups=+android_deploy_info");
+    assertThat(externalTaskInterceptor.command)
+        .contains("--output_groups=+android_deploy_info,+ndk_symbolization");
     assertThat(externalTaskInterceptor.command).containsAllIn(blazeFlags);
   }
 
@@ -175,7 +176,8 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     assertThat(getOnlyElement(buildStep.getDeployInfo().getApksToDeploy()).getPath())
         .contains("localcopy");
     assertThat(externalTaskInterceptor.command).contains(buildTarget.toString());
-    assertThat(externalTaskInterceptor.command).contains("--output_groups=+android_deploy_info");
+    assertThat(externalTaskInterceptor.command)
+        .contains("--output_groups=+android_deploy_info,+aswb_unstripped_libraries");
     assertThat(externalTaskInterceptor.command).containsAllIn(blazeFlags);
     verify(mockDownloader, times(1)).download(any(), any());
   }
@@ -215,7 +217,8 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     assertThat(buildStep.getDeployInfo()).isNotNull();
     assertThat(buildStep.getDeployInfo().getApksToDeploy()).containsExactly(apkFile);
     assertThat(externalTaskInterceptor.command).contains(buildTarget.toString());
-    assertThat(externalTaskInterceptor.command).contains("--output_groups=+android_deploy_info");
+    assertThat(externalTaskInterceptor.command)
+        .contains("--output_groups=+android_deploy_info,+aswb_unstripped_libraries");
     assertThat(externalTaskInterceptor.command).containsAllIn(blazeFlags);
     verify(mockDownloader, times(0)).download(any(), any());
   }

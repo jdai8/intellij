@@ -21,10 +21,12 @@ import com.android.tools.idea.run.editor.AndroidJavaDebugger;
 import com.android.tools.ndk.run.editor.NativeAndroidDebuggerState;
 import com.google.common.collect.ImmutableList;
 import com.google.idea.blaze.android.cppimpl.debug.BlazeAutoAndroidDebugger;
+import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.project.Project;
+import java.io.File;
 
 /** Provides android debuggers and debugger states for blaze projects. */
 public interface BlazeAndroidDebuggerService {
@@ -45,6 +47,17 @@ public interface BlazeAndroidDebuggerService {
    */
   AndroidDebuggerState getDebuggerState(AndroidDebugger debugger);
 
+  /**
+   * Returns fully initialized debugger states, incorporating info from {@link
+   * BlazeAndroidDeployInfo}.
+   *
+   * <p>Note: Blaze projects should always use this method instead of the debuggers' {@link
+   * AndroidDebugger#createState()} method. Blaze projects require additional setup such as
+   * workspace directory flags that cannot be handled by the debuggers themselves.
+   */
+  AndroidDebuggerState getDebuggerState(
+      AndroidDebugger debugger, BlazeAndroidDeployInfo deployInfo);
+
   /** Default debugger service. */
   class DefaultDebuggerService implements BlazeAndroidDebuggerService {
     private final Project project;
@@ -60,6 +73,12 @@ public interface BlazeAndroidDebuggerService {
 
     @Override
     public AndroidDebuggerState getDebuggerState(AndroidDebugger debugger) {
+      return getDebuggerState(debugger, null);
+    }
+
+    @Override
+    public AndroidDebuggerState getDebuggerState(
+        AndroidDebugger debugger, BlazeAndroidDeployInfo deployInfo) {
       AndroidDebuggerState debuggerState = debugger.createState();
       if (isNdkPluginLoaded() && debuggerState instanceof NativeAndroidDebuggerState) {
         NativeAndroidDebuggerState nativeState = (NativeAndroidDebuggerState) debuggerState;
@@ -75,10 +94,16 @@ public interface BlazeAndroidDebuggerService {
         // LLDB.
         String sourceMapToWorkspaceRootCommand =
             "settings append target.source-map /proc/self/cwd/ " + workingDirPath;
+        StringBuilder symbolSearchPathsCommand =
+            new StringBuilder().append("settings append target.exec-search-paths");
+        for (File symbol : deployInfo.getSymbolFiles()) {
+          symbolSearchPathsCommand.append(" ").append(symbol.getParentFile().getAbsolutePath());
+        }
         ImmutableList<String> startupCommands =
             ImmutableList.<String>builder()
                 .addAll(nativeState.getUserStartupCommands())
                 .add(sourceMapToWorkspaceRootCommand)
+                .add(symbolSearchPathsCommand.toString())
                 .build();
         nativeState.setUserStartupCommands(startupCommands);
       }

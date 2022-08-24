@@ -29,6 +29,7 @@ import com.google.idea.blaze.base.async.process.LineProcessingOutputStream;
 import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker;
 import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
+import com.google.idea.blaze.base.command.buildresult.BlazeArtifact;
 import com.google.idea.blaze.base.command.buildresult.BuildResultHelper;
 import com.google.idea.blaze.base.command.buildresult.BuildResultHelper.GetArtifactsException;
 import com.google.idea.blaze.base.console.BlazeConsoleLineProcessorProvider;
@@ -54,6 +55,7 @@ import java.nio.file.Files;
 /** Builds the APK using normal blaze build. */
 public class FullApkBuildStep implements ApkBuildStep {
   @VisibleForTesting public static final String DEPLOY_INFO_SUFFIX = ".deployinfo.pb";
+  public static final String LIBRARY_SUFFIX = ".so";
 
   /** Controls the post-build remote APK fetching step. */
   @VisibleForTesting
@@ -102,7 +104,7 @@ public class FullApkBuildStep implements ApkBuildStep {
     try (BuildResultHelper buildResultHelper = invoker.createBuildResultHelper()) {
       command
           .addTargets(label)
-          .addBlazeFlags("--output_groups=+android_deploy_info")
+          .addBlazeFlags("--output_groups=+android_deploy_info,+ndk_symbolization")
           .addBlazeFlags(buildFlags)
           .addBlazeFlags(buildResultHelper.getBuildFlags());
 
@@ -136,9 +138,13 @@ public class FullApkBuildStep implements ApkBuildStep {
       AndroidDeployInfo deployInfoProto =
           deployInfoHelper.readDeployInfoProtoForTarget(
               label, buildResultHelper, fileName -> fileName.endsWith(DEPLOY_INFO_SUFFIX));
+      ImmutableList<File> libs =
+          BlazeArtifact.getLocalFiles(
+              buildResultHelper.getBuildArtifactsForTarget(
+                  label, fileName -> fileName.endsWith(LIBRARY_SUFFIX)));
       deployInfo =
           deployInfoHelper.extractDeployInfoAndInvalidateManifests(
-              project, new File(executionRoot), deployInfoProto);
+              project, new File(executionRoot), deployInfoProto, libs);
     } catch (GetArtifactsException e) {
       IssueOutput.error("Could not read BEP output: " + e.getMessage()).submit(context);
     } catch (GetDeployInfoException e) {
