@@ -16,6 +16,7 @@
 package com.google.idea.blaze.base.sync.libraries;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.idea.blaze.base.model.BlazeLibrary;
@@ -32,16 +33,15 @@ import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsPr
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.DependencyScope;
 import com.intellij.openapi.roots.ModifiableRootModel;
-import com.intellij.openapi.roots.OrderRootType;
 import com.intellij.openapi.roots.libraries.Library;
 import com.intellij.openapi.roots.libraries.LibraryTable;
 import com.intellij.openapi.roots.libraries.LibraryTablesRegistrar;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 /** Edits IntelliJ libraries */
 public class LibraryEditor {
@@ -56,6 +56,12 @@ public class LibraryEditor {
     Set<LibraryKey> intelliJLibraryState = Sets.newHashSet();
     IdeModifiableModelsProvider modelsProvider =
         BaseSdkCompat.createModifiableModelsProvider(project);
+    Optional<LibraryConverter> libraryConverter =
+        LibraryConverter.getFirstAvailableLibraryConverter();
+    if (libraryConverter.isEmpty()) {
+      logger.error("Fail to access any library converter");
+      return;
+    }
     for (Library library : modelsProvider.getAllLibraries()) {
       String name = library.getName();
       if (name != null) {
@@ -65,10 +71,11 @@ public class LibraryEditor {
     context.output(PrintOutput.log(String.format("Workspace has %d libraries", libraries.size())));
 
     try {
-      for (BlazeLibrary library : libraries) {
-        updateLibrary(
-            project, blazeProjectData.getArtifactLocationDecoder(), modelsProvider, library);
-      }
+      libraryConverter
+          .get()
+          .getOrCreateLibraryModelModifiers(
+              project, blazeProjectData.getArtifactLocationDecoder(), modelsProvider, libraries)
+          .forEach(blazeLibraryModifier -> blazeLibraryModifier.updateModifiableModel());
 
       // Garbage collect unused libraries
       List<LibrarySource> librarySources = Lists.newArrayList();
@@ -85,11 +92,10 @@ public class LibraryEditor {
               .reduce(Predicate::or)
               .orElse(o -> false);
 
-      Set<LibraryKey> newLibraryKeys =
-          libraries.stream().map((blazeLibrary) -> blazeLibrary.key).collect(Collectors.toSet());
+      ImmutableSet<String> newLibraryKeys = libraryConverter.get().toLibraryNames(libraries);
       for (LibraryKey libraryKey : intelliJLibraryState) {
         String libraryIntellijName = libraryKey.getIntelliJLibraryName();
-        if (!newLibraryKeys.contains(libraryKey)) {
+        if (!newLibraryKeys.contains(libraryIntellijName)) {
           Library library = modelsProvider.getLibraryByName(libraryIntellijName);
           if (!gcRetentionFilter.test(library)) {
             if (library != null) {
@@ -121,23 +127,13 @@ public class LibraryEditor {
       ArtifactLocationDecoder artifactLocationDecoder,
       IdeModifiableModelsProvider modelsProvider,
       BlazeLibrary blazeLibrary) {
-    String libraryName = blazeLibrary.key.getIntelliJLibraryName();
-
-    Library library = modelsProvider.getLibraryByName(libraryName);
-    boolean libraryExists = library != null;
-    if (!libraryExists) {
-      library = modelsProvider.createLibrary(libraryName);
-    }
-    Library.ModifiableModel libraryModel = modelsProvider.getModifiableLibraryModel(library);
-    if (libraryExists) {
-      for (String url : libraryModel.getUrls(OrderRootType.CLASSES)) {
-        libraryModel.removeRoot(url, OrderRootType.CLASSES);
-      }
-      for (String url : libraryModel.getUrls(OrderRootType.SOURCES)) {
-        libraryModel.removeRoot(url, OrderRootType.SOURCES);
-      }
-    }
-    blazeLibrary.modifyLibraryModel(project, artifactLocationDecoder, libraryModel);
+    LibraryConverter.getFirstAvailableLibraryConverter()
+        .ifPresentOrElse(
+            ep ->
+                ep.getOrCreateLibraryModelModifier(
+                        project, artifactLocationDecoder, modelsProvider, blazeLibrary)
+                    .updateModifiableModel(),
+            () -> logger.error("Fail to access any library converter"));
   }
 
   /**
@@ -153,22 +149,30 @@ public class LibraryEditor {
    * @param libraries the libraries to add as dependencies
    */
   public static void configureDependencies(
-      ModifiableRootModel modifiableRootModel, Collection<BlazeLibrary> libraries) {
+      Project project,
+      ModifiableRootModel modifiableRootModel,
+      Collection<BlazeLibrary> libraries) {
     LibraryTable libraryTable =
         LibraryTablesRegistrar.getInstance().getLibraryTable(modifiableRootModel.getProject());
+    Optional<LibraryConverter> libraryConverter =
+        LibraryConverter.getFirstAvailableLibraryConverter();
+    if (libraryConverter.isEmpty()) {
+      logger.error("Fail to access any library converter");
+      return;
+    }
+    ImmutableSet<String> libraryNames = libraryConverter.get().toLibraryNames(libraries);
 
-    ImmutableList<Library> foundLibraries = findLibraries(libraries, libraryTable);
+    ImmutableList<Library> foundLibraries = findLibraries(libraryNames, libraryTable);
     // Add the libraries in a batch operation as adding them one after the other is not performant.
     modifiableRootModel.addLibraryEntries(
         foundLibraries, DependencyScope.COMPILE, /* exported= */ false);
   }
 
   private static ImmutableList<Library> findLibraries(
-      Collection<BlazeLibrary> libraries, LibraryTable libraryTable) {
+      Collection<String> libraryNames, LibraryTable libraryTable) {
     ImmutableList.Builder<Library> foundLibraries = ImmutableList.builder();
     ImmutableList.Builder<String> missingLibraries = ImmutableList.builder();
-    for (BlazeLibrary library : libraries) {
-      String libraryName = library.key.getIntelliJLibraryName();
+    for (String libraryName : libraryNames) {
       // This call is slow and causes freezes when done through IdeModifiableModelsProvider.
       Library foundLibrary = libraryTable.getLibraryByName(libraryName);
       if (foundLibrary == null) {
