@@ -150,6 +150,7 @@ final class ProjectUpdateSyncTask {
     this.oldProjectData = getOldProjectData(project, syncMode);
   }
 
+  @Nullable
   private static BlazeProjectData getOldProjectData(Project project, SyncMode syncMode) {
     return syncMode == SyncMode.FULL
         ? null
@@ -389,7 +390,7 @@ final class ProjectUpdateSyncTask {
         BlazeLibraryCollector.getLibraries(projectViewSet, newBlazeProjectData);
     LibraryEditor.updateProjectLibraries(
         project, context, projectViewSet, newBlazeProjectData, libraries);
-    LibraryEditor.configureDependencies(workspaceModifiableModel, libraries);
+    LibraryEditor.configureDependencies(project, workspaceModifiableModel, libraries);
 
     for (BlazeSyncPlugin blazeSyncPlugin : BlazeSyncPlugin.EP_NAME.getExtensions()) {
       blazeSyncPlugin.updateProjectStructure(

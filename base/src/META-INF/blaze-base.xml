@@ -197,6 +197,9 @@
                     serviceImplementation="com.google.idea.blaze.base.sync.status.BlazeSyncStatusImpl"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.sync.libraries.ExternalLibraryManager"/>
 
+    <projectService serviceInterface="com.google.idea.blaze.base.sync.libraries.LibraryConverter"
+        serviceImplementation="com.google.idea.blaze.base.sync.libraries.LibraryConverter"/>
+
     <applicationService serviceInterface="com.google.idea.blaze.base.async.executor.BlazeExecutor"
                         serviceImplementation="com.google.idea.blaze.base.async.executor.BlazeExecutorImpl"/>
     <fileDocumentManagerListener implementation="com.google.idea.blaze.base.buildmodifier.BuildFileFormatOnSaveHandler" order="first"/>
@@ -389,6 +392,8 @@
                     interface="com.google.idea.blaze.base.editor.BlazeHighlightStatsCollector"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.AbsolutePathPatcher"
                     interface="com.google.idea.blaze.base.io.AbsolutePathPatcher"/>
+    <extensionPoint qualifiedName="com.google.idea.blaze.LibraryEditorProvider"
+        interface="com.google.idea.blaze.base.sync.libraries.LibraryEditor.LibraryEditorProvider"/>
   </extensionPoints>
 
   <application-components>
@@ -551,6 +556,7 @@
     <ExperimentLoader implementation="com.google.idea.common.experiments.SystemPropertyExperimentLoader" order="first" id="SystemPropertyExperimentLoader"/>
     <ExperimentLoader implementation="com.google.idea.common.experiments.UserOverridesExperimentLoader" order="after SystemPropertyExperimentLoader" id="UserOverridesExperimentLoader"/>
     <ExperimentLoader implementation="com.google.idea.common.experiments.DefaultValuesExperimentLoader" order="last" id="DefaultValuesExperimentLoader"/>
+    <LibraryEditorProvider implementation="com.google.idea.blaze.base.sync.libraries.DefaultLibraryEditorProvider" order="last" />
   </extensions>
 
   <projectListeners>
