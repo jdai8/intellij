@@ -95,7 +95,9 @@ public class BlazeAndroidLibrarySource extends LibrarySource.Adapter {
       Set<String> aarJarsPaths = new HashSet<>();
       for (AarLibrary aarLibrary : aarLibraries) {
         if (aarLibrary.libraryArtifact != null) {
-          ArtifactLocation location = aarLibrary.libraryArtifact.jarForIntellijLibrary();
+          ArtifactLocation jarLocation = aarLibrary.libraryArtifact.jarForIntellijLibrary();
+          ImmutableList<ArtifactLocation> srcJarLocations =
+              aarLibrary.libraryArtifact.getSourceJars();
           // Keep track of the relative paths of the "configuration". It might be that we have a
           // host
           // config (x86-64) and various target configurations (armv7a, aarch64).
@@ -103,10 +105,17 @@ public class BlazeAndroidLibrarySource extends LibrarySource.Adapter {
           // to figure out aar libraries. However, what we picked might not match up with jdeps, and
           // we'd end up creating a jar library from jdeps. Then when we compare the aar
           // against the jar library, it won't match unless we ignore the configuration segment.
-          String configurationLessPath = location.getRelativePath();
+          String configurationLessPath = jarLocation.getRelativePath();
           if (!configurationLessPath.isEmpty()) {
             aarJarsPaths.add(configurationLessPath);
           }
+
+          // filter out src jars of aars to make sure all jars belong to aar will be cached in aar
+          // cache
+          srcJarLocations.stream()
+              .map(ArtifactLocation::getRelativePath)
+              .filter(path -> !path.isEmpty())
+              .forEach(aarJarsPaths::add);
         }
       }
       this.aarJarsPaths = aarJarsPaths;

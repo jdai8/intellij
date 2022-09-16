@@ -121,6 +121,17 @@ public final class Unpacker {
         }
       }
 
+      // copy src jars
+      if (!aarAndJar.srcJars().isEmpty()) {
+        for (BlazeArtifact srcjar : aarAndJar.srcJars()) {
+          try (InputStream stream = srcjar.getInputStream()) {
+            Path destination = aarDir.toPath().resolve(UnpackedAarUtils.getSrcJarName(srcjar));
+            ops.mkdirs(destination.getParent().toFile());
+            Files.copy(stream, destination, StandardCopyOption.REPLACE_EXISTING);
+          }
+        }
+      }
+
     } catch (IOException e) {
       logger.warn(
           String.format(

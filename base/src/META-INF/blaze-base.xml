@@ -197,6 +197,9 @@
                     serviceImplementation="com.google.idea.blaze.base.sync.status.BlazeSyncStatusImpl"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.sync.libraries.ExternalLibraryManager"/>
 
+    <projectService serviceInterface="com.google.idea.blaze.base.sync.libraries.LibraryConverter"
+        serviceImplementation="com.google.idea.blaze.base.sync.libraries.LibraryConverter"/>
+
     <applicationService serviceInterface="com.google.idea.blaze.base.async.executor.BlazeExecutor"
                         serviceImplementation="com.google.idea.blaze.base.async.executor.BlazeExecutorImpl"/>
     <fileDocumentManagerListener implementation="com.google.idea.blaze.base.buildmodifier.BuildFileFormatOnSaveHandler" order="first"/>

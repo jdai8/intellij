@@ -28,6 +28,7 @@ import java.io.File;
 
 /** Utility methods to convert aar to other type that needed by {@link UnpackedAars} */
 public final class UnpackedAarUtils {
+  public static final String CLASS_JAR_FILE_NAME = "classes_and_libs_merged.jar";
 
   /* Converts {@link BlazeArtifact} to the key which is used to create aar directory name */
   public static String getArtifactKey(BlazeArtifact artifact) {
@@ -46,6 +47,12 @@ public final class UnpackedAarUtils {
     String name = FileUtil.getNameWithoutExtension(PathUtil.getFileName(key));
     return generateAarDirectoryName(/* name= */ name, /* hashCode= */ key.hashCode())
         + SdkConstants.DOT_AAR;
+  }
+
+  public static String getSrcJarName(BlazeArtifact srcJar) {
+    String key = getArtifactKey(srcJar);
+    String name = FileUtil.getNameWithoutExtension(PathUtil.getFileName(key));
+    return name + "-src.jar";
   }
 
   /**
@@ -72,7 +79,7 @@ public final class UnpackedAarUtils {
     // At this point, we don't know the name of the original jar, but we must give the cache
     // file a name. Just use a name similar to what bazel currently uses, and that conveys
     // the origin of the jar (merged from classes.jar and libs/*.jar).
-    return new File(jarsDirectory, "classes_and_libs_merged.jar");
+    return new File(jarsDirectory, CLASS_JAR_FILE_NAME);
   }
 
   /**
