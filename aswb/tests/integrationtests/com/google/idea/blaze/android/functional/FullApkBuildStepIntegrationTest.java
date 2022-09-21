@@ -26,6 +26,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSetMultimap;
 import com.google.devtools.build.lib.rules.android.deployinfo.AndroidDeployInfoOuterClass.AndroidDeployInfo;
 import com.google.idea.blaze.android.BlazeAndroidIntegrationTestCase;
 import com.google.idea.blaze.android.MessageCollector;
@@ -110,7 +112,16 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     mockBuildResultHelper = mock(BuildResultHelper.class);
     when(mockBuildResultHelper.getBuildOutput())
         .thenReturn(
-            new ParsedBepOutput(null, getExecRoot(), null, null, 0, BuildResult.SUCCESS, 0));
+            new ParsedBepOutput(
+                null,
+                getExecRoot(),
+                ImmutableMap.of(),
+                ImmutableSetMultimap.of(),
+                0,
+                BuildResult.SUCCESS,
+                0));
+    when(mockBuildResultHelper.getBuildArtifactsForTarget(any(), any()))
+        .thenReturn(ImmutableList.of());
     BuildSystemProviderWrapper buildSystem = new BuildSystemProviderWrapper(() -> getProject());
     buildSystem.setBuildResultHelperSupplier(() -> mockBuildResultHelper);
     registerExtension(BuildSystemProvider.EP_NAME, buildSystem);
@@ -128,7 +139,7 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     when(helper.readDeployInfoProtoForTarget(eq(buildTarget), any(BuildResultHelper.class), any()))
         .thenReturn(fakeProto);
     when(helper.extractDeployInfoAndInvalidateManifests(
-            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto)))
+            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto), any()))
         .thenReturn(mockDeployInfo);
 
     // Perform
@@ -161,7 +172,7 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     when(helper.readDeployInfoProtoForTarget(eq(buildTarget), any(BuildResultHelper.class), any()))
         .thenReturn(fakeProto);
     when(helper.extractDeployInfoAndInvalidateManifests(
-            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto)))
+            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto), any()))
         .thenReturn(mockDeployInfo);
 
     // Perform
@@ -203,7 +214,7 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     when(helper.readDeployInfoProtoForTarget(eq(buildTarget), any(BuildResultHelper.class), any()))
         .thenReturn(fakeProto);
     when(helper.extractDeployInfoAndInvalidateManifests(
-            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto)))
+            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto), any()))
         .thenReturn(mockDeployInfo);
 
     // Perform
@@ -227,7 +238,7 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     BlazeApkDeployInfoProtoHelper helper = mock(BlazeApkDeployInfoProtoHelper.class);
     when(helper.readDeployInfoProtoForTarget(eq(buildTarget), any(BuildResultHelper.class), any()))
         .thenReturn(fakeProto);
-    when(helper.extractDeployInfoAndInvalidateManifests(any(), any(), any()))
+    when(helper.extractDeployInfoAndInvalidateManifests(any(), any(), any(), any()))
         .thenThrow(new GetDeployInfoException("Fake Exception"));
 
     // Perform
@@ -254,7 +265,7 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     when(helper.readDeployInfoProtoForTarget(eq(buildTarget), any(BuildResultHelper.class), any()))
         .thenReturn(fakeProto);
     when(helper.extractDeployInfoAndInvalidateManifests(
-            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto)))
+            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto), any()))
         .thenReturn(mockDeployInfo);
 
     // Perform
@@ -272,7 +283,15 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
   public void build_withNullExecRoot_shouldFail() throws Exception {
     // Return null execroot
     when(mockBuildResultHelper.getBuildOutput())
-        .thenReturn(new ParsedBepOutput(null, null, null, null, 0, BuildResult.SUCCESS, 0));
+        .thenReturn(
+            new ParsedBepOutput(
+                null,
+                null,
+                ImmutableMap.of(),
+                ImmutableSetMultimap.of(),
+                0,
+                BuildResult.SUCCESS,
+                0));
 
     // Return fake deploy info proto and mocked deploy info data object.
     AndroidDeployInfo fakeProto = AndroidDeployInfo.newBuilder().build();
@@ -282,7 +301,7 @@ public class FullApkBuildStepIntegrationTest extends BlazeAndroidIntegrationTest
     when(helper.readDeployInfoProtoForTarget(eq(buildTarget), any(BuildResultHelper.class), any()))
         .thenReturn(fakeProto);
     when(helper.extractDeployInfoAndInvalidateManifests(
-            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto)))
+            eq(getProject()), eq(new File(getExecRoot())), eq(fakeProto), any()))
         .thenReturn(mockDeployInfo);
 
     // Perform
